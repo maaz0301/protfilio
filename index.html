@@ -60,7 +60,7 @@
   @media (max-width:640px){ .navlinks{gap:16px; font-size:11px;} }
 
   /* ---------- HERO ---------- */
-  .hero{padding:96px 0 64px; position:relative;}
+  .hero{padding:96px 0 64px; position:relative; overflow:hidden;}
   .eyebrow{
     font-family:var(--font-mono); font-size:13px; color:var(--teal);
     display:flex; align-items:center; gap:10px; margin-bottom:24px;
@@ -85,7 +85,12 @@
   }
   .hero-cta{display:flex; gap:14px; margin-top:36px; flex-wrap:wrap;}
 
-  .hero-grid{display:grid; grid-template-columns:1.5fr 1fr; gap:48px; align-items:start;}
+  #hero-canvas{
+    position:absolute; inset:0; width:100%; height:100%;
+    z-index:0; pointer-events:none; opacity:0.55;
+  }
+  @media (prefers-reduced-motion: reduce){ #hero-canvas{display:none;} }
+  .hero-grid{position:relative; z-index:1; display:grid; grid-template-columns:1.5fr 1fr; gap:48px; align-items:start;}
   @media (max-width:800px){ .hero-grid{grid-template-columns:1fr;} }
   .hero-photo{
     position:relative; border:1px solid var(--line); border-radius:14px;
@@ -115,6 +120,7 @@
 
   /* ---------- PIPELINE SIGNATURE ---------- */
   .pipeline{
+    position:relative; z-index:1;
     margin-top:72px; border:1px solid var(--line); border-radius:12px;
     background:var(--bg-raise); padding:28px 24px 22px; overflow-x:auto;
   }
@@ -253,6 +259,7 @@
 
 <main>
   <section class="hero wrap">
+    <canvas id="hero-canvas" aria-hidden="true"></canvas>
     <div class="hero-grid">
       <div>
         <div class="eyebrow">AVAILABLE FOR WORK · ISLAMABAD, PAKISTAN</div>
@@ -495,6 +502,86 @@
     </div>
   </footer>
 </main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+  var canvas = document.getElementById('hero-canvas');
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(!canvas || !window.THREE || reduceMotion) return;
+
+  var colors = { teal:0x4fd1c5, amber:0xe8a33d };
+  var scene = new THREE.Scene();
+  var camera = new THREE.PerspectiveCamera(55, 1, 0.1, 100);
+  camera.position.z = 16;
+
+  var renderer = new THREE.WebGLRenderer({ canvas:canvas, alpha:true, antialias:true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+
+  var group = new THREE.Group();
+  scene.add(group);
+
+  var nodeCount = 46;
+  var nodes = [];
+  var posArr = new Float32Array(nodeCount * 3);
+  for(var i = 0; i < nodeCount; i++){
+    var x = (Math.random() - 0.5) * 20;
+    var y = (Math.random() - 0.5) * 12;
+    var z = (Math.random() - 0.5) * 10;
+    nodes.push(new THREE.Vector3(x, y, z));
+    posArr[i*3] = x; posArr[i*3+1] = y; posArr[i*3+2] = z;
+  }
+
+  var pointGeo = new THREE.BufferGeometry();
+  pointGeo.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
+  var pointMat = new THREE.PointsMaterial({ color: colors.teal, size: 0.16, transparent: true, opacity: 0.9 });
+  group.add(new THREE.Points(pointGeo, pointMat));
+
+  var linePositions = [];
+  var maxDist = 6.2;
+  for(var a = 0; a < nodes.length; a++){
+    for(var b = a + 1; b < nodes.length; b++){
+      if(nodes[a].distanceTo(nodes[b]) < maxDist){
+        linePositions.push(nodes[a].x, nodes[a].y, nodes[a].z, nodes[b].x, nodes[b].y, nodes[b].z);
+      }
+    }
+  }
+  var lineGeo = new THREE.BufferGeometry();
+  lineGeo.setAttribute('position', new THREE.Float32BufferAttribute(linePositions, 3));
+  var lineMat = new THREE.LineBasicMaterial({ color: colors.amber, transparent: true, opacity: 0.14 });
+  group.add(new THREE.LineSegments(lineGeo, lineMat));
+
+  var targetRotX = 0, targetRotY = 0;
+  canvas.parentElement.addEventListener('mousemove', function(e){
+    var rect = canvas.parentElement.getBoundingClientRect();
+    targetRotY = ((e.clientX - rect.left) / rect.width - 0.5) * 0.6;
+    targetRotX = ((e.clientY - rect.top) / rect.height - 0.5) * 0.4;
+  });
+
+  function resize(){
+    var w = canvas.clientWidth || canvas.parentElement.clientWidth;
+    var h = canvas.clientHeight || canvas.parentElement.clientHeight;
+    if(!w || !h) return;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+
+  var ro = window.ResizeObserver ? new ResizeObserver(resize) : null;
+  if(ro) ro.observe(canvas.parentElement);
+  window.addEventListener('resize', resize);
+  resize();
+
+  function animate(){
+    requestAnimationFrame(animate);
+    group.rotation.y += 0.0012;
+    group.rotation.x += (targetRotX - group.rotation.x) * 0.03;
+    group.rotation.y += (targetRotY - group.rotation.y) * 0.01;
+    renderer.render(scene, camera);
+  }
+  animate();
+})();
+</script>
 
 </body>
 </html>
