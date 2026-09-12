@@ -86,8 +86,8 @@
   .hero-cta{display:flex; gap:14px; margin-top:36px; flex-wrap:wrap;}
 
   #hero-canvas{
-    position:absolute; inset:0; width:100%; height:100%;
-    z-index:0; pointer-events:none; opacity:0.55;
+    position:fixed; inset:0; width:100vw; height:100vh;
+    z-index:-1; pointer-events:none; opacity:0.5;
   }
   @media (prefers-reduced-motion: reduce){ #hero-canvas{display:none;} }
   .hero-grid{position:relative; z-index:1; display:grid; grid-template-columns:1.5fr 1fr; gap:48px; align-items:start;}
@@ -242,6 +242,8 @@
 </head>
 <body>
 
+<canvas id="hero-canvas" aria-hidden="true"></canvas>
+
 <header>
   <div class="wrap">
     <nav>
@@ -259,7 +261,6 @@
 
 <main>
   <section class="hero wrap">
-    <canvas id="hero-canvas" aria-hidden="true"></canvas>
     <div class="hero-grid">
       <div>
         <div class="eyebrow">AVAILABLE FOR WORK · ISLAMABAD, PAKISTAN</div>
@@ -531,8 +532,8 @@
 
   var colors = { teal:0x4fd1c5, amber:0xe8a33d };
   var scene = new THREE.Scene();
-  var camera = new THREE.PerspectiveCamera(55, 1, 0.1, 100);
-  camera.position.z = 16;
+  var camera = new THREE.PerspectiveCamera(60, 1, 0.1, 100);
+  camera.position.z = 20;
 
   var renderer = new THREE.WebGLRenderer({ canvas:canvas, alpha:true, antialias:true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -540,24 +541,24 @@
   var group = new THREE.Group();
   scene.add(group);
 
-  var nodeCount = 46;
+  var nodeCount = 110;
   var nodes = [];
   var posArr = new Float32Array(nodeCount * 3);
   for(var i = 0; i < nodeCount; i++){
-    var x = (Math.random() - 0.5) * 20;
-    var y = (Math.random() - 0.5) * 12;
-    var z = (Math.random() - 0.5) * 10;
+    var x = (Math.random() - 0.5) * 34;
+    var y = (Math.random() - 0.5) * 34;
+    var z = (Math.random() - 0.5) * 16;
     nodes.push(new THREE.Vector3(x, y, z));
     posArr[i*3] = x; posArr[i*3+1] = y; posArr[i*3+2] = z;
   }
 
   var pointGeo = new THREE.BufferGeometry();
   pointGeo.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
-  var pointMat = new THREE.PointsMaterial({ color: colors.teal, size: 0.16, transparent: true, opacity: 0.9 });
+  var pointMat = new THREE.PointsMaterial({ color: colors.teal, size: 0.14, transparent: true, opacity: 0.85 });
   group.add(new THREE.Points(pointGeo, pointMat));
 
   var linePositions = [];
-  var maxDist = 6.2;
+  var maxDist = 5.4;
   for(var a = 0; a < nodes.length; a++){
     for(var b = a + 1; b < nodes.length; b++){
       if(nodes[a].distanceTo(nodes[b]) < maxDist){
@@ -567,27 +568,22 @@
   }
   var lineGeo = new THREE.BufferGeometry();
   lineGeo.setAttribute('position', new THREE.Float32BufferAttribute(linePositions, 3));
-  var lineMat = new THREE.LineBasicMaterial({ color: colors.amber, transparent: true, opacity: 0.14 });
+  var lineMat = new THREE.LineBasicMaterial({ color: colors.amber, transparent: true, opacity: 0.12 });
   group.add(new THREE.LineSegments(lineGeo, lineMat));
 
   var targetRotX = 0, targetRotY = 0;
-  canvas.parentElement.addEventListener('mousemove', function(e){
-    var rect = canvas.parentElement.getBoundingClientRect();
-    targetRotY = ((e.clientX - rect.left) / rect.width - 0.5) * 0.6;
-    targetRotX = ((e.clientY - rect.top) / rect.height - 0.5) * 0.4;
+  window.addEventListener('mousemove', function(e){
+    targetRotY = (e.clientX / window.innerWidth - 0.5) * 0.6;
+    targetRotX = (e.clientY / window.innerHeight - 0.5) * 0.4;
   });
 
   function resize(){
-    var w = canvas.clientWidth || canvas.parentElement.clientWidth;
-    var h = canvas.clientHeight || canvas.parentElement.clientHeight;
-    if(!w || !h) return;
+    var w = window.innerWidth, h = window.innerHeight;
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
   }
 
-  var ro = window.ResizeObserver ? new ResizeObserver(resize) : null;
-  if(ro) ro.observe(canvas.parentElement);
   window.addEventListener('resize', resize);
   resize();
 
